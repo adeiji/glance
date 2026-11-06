@@ -227,6 +227,7 @@
   <span id="conn" title="Connection to the Glance server"><i></i><span>offline</span></span>
   <button id="follow" class="ic" title="Follow the latest: jump to whichever conversation updates"><i data-icon="follow"></i></button>
   <button id="voice" class="ic" title="Read new answers aloud"></button>
+  <button id="help" class="ic" title="Take the tour"><i data-icon="help"></i></button>
   <button id="gear" class="ic" title="Settings" aria-haspopup="dialog"><i data-icon="gear"></i></button>
 </header>
 
@@ -335,6 +336,7 @@ const ICONS = {
   chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   palette: '<path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2a5.5 5.5 0 0 0 5.5-5.5C22 6 17.5 2 12 2Z"/><circle cx="7.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="10.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="15.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="18" cy="10.5" r=".6" fill="currentColor"/>',
   contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.3 9.5a2.8 2.8 0 0 1 5.4.9c0 1.8-2.7 2.3-2.7 4"/><path d="M12 17.5v.1"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   follow: '<circle cx="12" cy="12" r="7"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>',
   send: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
@@ -743,6 +745,7 @@ $('tourNext').onclick = () => { if (tourStep >= TOUR.length - 1) return endTour(
 $('tourBack').onclick = () => { if (tourStep > 0) { tourStep--; renderTour(); } };
 $('tourSkip').onclick = endTour;
 $('tourAgain').onclick = startTour;
+$('help').onclick = startTour;
 document.addEventListener('keydown', e => { if (!$('tour').hidden && e.key === 'Escape') endTour(); });
 let toured = false;
 try { toured = localStorage.getItem('glance-toured') === '1'; } catch {}
