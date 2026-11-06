@@ -32,6 +32,13 @@ That starts the server and opens http://127.0.0.1:4777. From then on, every new 
 
 Requirements: Claude Code and Node, which you already have. Voice uses the built-in macOS speech engine; on Linux and Windows the board is silent.
 
+## Settings
+
+**Terminal reply** decides what you see in the terminal alongside the board. Change it in `/config` (it's listed under the plugin) or with `/plugin configure glance@glance`. It takes effect in the next session.
+
+- `full` (default): the normal Claude Code answer in the terminal, plus the visual on the board.
+- `short`: one line in the terminal pointing at the board. The board becomes the answer.
+
 ## What's on the page
 
 - **Left**: your conversations. A dot marks one that has something new; an amber banner says when one is waiting on you.

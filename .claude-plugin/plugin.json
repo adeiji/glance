@@ -1,10 +1,31 @@
 {
   "name": "glance",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See what Claude is doing instead of reading it: a page beside Claude Code that turns every answer into a picture and reads it aloud, across all your sessions.",
-  "author": { "name": "adeiji" },
+  "author": {
+    "name": "adeiji"
+  },
   "homepage": "https://github.com/adeiji/glance",
   "repository": "https://github.com/adeiji/glance",
   "license": "MIT",
-  "keywords": ["visualization", "voice", "board", "diagrams", "mermaid", "sessions"]
+  "keywords": [
+    "visualization",
+    "voice",
+    "board",
+    "diagrams",
+    "mermaid",
+    "sessions"
+  ],
+  "userConfig": {
+    "terminal_reply": {
+      "type": "string",
+      "title": "Terminal reply",
+      "description": "full: the normal Claude Code answer in the terminal, plus the visual on the board. short: one line in the terminal pointing at the board.",
+      "options": [
+        "full",
+        "short"
+      ],
+      "default": "full"
+    }
+  }
 }

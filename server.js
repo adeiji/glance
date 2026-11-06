@@ -382,8 +382,15 @@ function serve() {
 
   // ---------- talking to claude ----------
 
+  // The "Terminal reply" plugin setting, written here by hook.js so page-driven sessions follow it too.
+  function replyMode() {
+    try { return JSON.parse(fs.readFileSync(path.join(DATA, 'config.json'), 'utf8')).terminalReply === 'short' ? 'short' : 'full'; } catch { return 'full'; }
+  }
   function rules() {
-    try { return `${fs.readFileSync(RULES, 'utf8').trim()}\n\nOn this machine the board file is ${BOARD} and the block syntax is in ${VIZ}. The Glance page is at ${URL_BASE}.`; } catch { return ''; }
+    const line = replyMode() === 'short'
+      ? 'Terminal reply: short. Your text reply is just one or two sentences pointing at the board.'
+      : 'Terminal reply: full. Give your normal, complete text answer as well; the board visual is in addition to it, not instead of it.';
+    try { return `${fs.readFileSync(RULES, 'utf8').trim()}\n\nOn this machine the board file is ${BOARD} and the block syntax is in ${VIZ}. The Glance page is at ${URL_BASE}.\n${line}`; } catch { return ''; }
   }
 
   function sectionLine(sessionId, cwd) {
@@ -396,7 +403,7 @@ function serve() {
       rules(),
       sectionLine(sessionId, cwd),
       'Put your answer on the board following those rules.',
-      'Your text reply shows in the chat panel beside the board, so keep it to one short sentence pointing at the visual.',
+      replyMode() === 'short' ? 'Your text reply shows in the chat panel beside the board, so keep it to one short sentence pointing at the visual.' : 'Your text reply shows in the chat panel beside the board.',
     ].join('\n');
   }
 

@@ -13,10 +13,16 @@ if (process.env.GLANCE_DRIVEN) process.exit(0);
 const root = __dirname;
 const data = process.env.GLANCE_DATA || path.join(os.homedir(), '.claude', 'glance');
 const port = Number(process.env.BOARD_PORT) || 4777;
+// The "Terminal reply" plugin setting: full keeps the normal answer in the terminal, short leaves one line pointing at the board.
+const mode = process.env.CLAUDE_PLUGIN_OPTION_TERMINAL_REPLY === 'short' ? 'short' : 'full';
+try { fs.mkdirSync(data, { recursive: true }); fs.writeFileSync(path.join(data, 'config.json'), JSON.stringify({ terminalReply: mode })); } catch {}
+const replyLine = mode === 'short'
+  ? 'Terminal reply: short. Your text reply is just one or two sentences pointing at the board.'
+  : 'Terminal reply: full. Give your normal, complete text answer as well; the board visual is in addition to it, not instead of it.';
 let rules = '';
 try { rules = fs.readFileSync(path.join(root, 'BOARD.md'), 'utf8').trim(); } catch {}
 if (rules) {
-  rules += `\n\nOn this machine the board file is ${path.join(data, 'board.html')} and the block syntax is in ${path.join(root, 'VIZ.md')}. The Glance page is at http://127.0.0.1:${port}.`;
+  rules += `\n\nOn this machine the board file is ${path.join(data, 'board.html')} and the block syntax is in ${path.join(root, 'VIZ.md')}. The Glance page is at http://127.0.0.1:${port}.\n${replyLine}`;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: rules } }));
 }
 
