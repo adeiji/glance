@@ -1,0 +1,10 @@
+{
+  "name": "glance",
+  "version": "0.1.0",
+  "description": "See what Claude is doing instead of reading it: a page beside Claude Code that turns every answer into a picture and reads it aloud, across all your sessions.",
+  "author": { "name": "adeiji" },
+  "homepage": "https://github.com/adeiji/glance",
+  "repository": "https://github.com/adeiji/glance",
+  "license": "MIT",
+  "keywords": ["visualization", "voice", "board", "diagrams", "mermaid", "sessions"]
+}

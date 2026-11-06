@@ -1,0 +1,5 @@
+history/
+*.log
+.token
+.DS_Store
+node_modules/

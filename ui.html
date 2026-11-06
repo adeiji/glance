@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glance</title>
+<link rel="stylesheet" href="/board/board.css">
+<script>
+  // Apply the saved palette before first paint.
+  try {
+    const t = localStorage.getItem('board-theme'), c = localStorage.getItem('board-scheme');
+    if (t) document.documentElement.dataset.theme = t;
+    if (c) document.documentElement.dataset.scheme = c;
+  } catch {}
+</script>
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 13.5px/1.5 var(--font); font-feature-settings: "cv11", "ss01"; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  [hidden] { display: none !important; }
+
+  /* top bar */
+  #top { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  #top h1 { margin: 0; font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+  #top .spacer { flex: 1; }
+  .pick { display: inline-flex; align-items: center; gap: 2px; color: var(--muted); }
+  .pick:hover { color: var(--ink); }
+  .pick svg { width: 14px; height: 14px; }
+  #top select { flex: none; width: auto; background: transparent; border: 0; padding: 4px 2px; font-size: 12px; color: inherit; cursor: pointer; }
+  svg.icon { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  button.ic { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; border-radius: 6px; color: var(--muted); cursor: pointer; }
+  button.ic:hover { color: var(--ink); background: var(--paper); }
+  #conn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-left: 4px; }
+  #conn i { width: 6px; height: 6px; border-radius: 50%; background: var(--bad); }
+  #conn.on i { background: var(--ok); }
+  #voice.off { color: var(--muted); opacity: .6; }
+  #follow.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  /* three panes */
+  #shell { display: grid; grid-template-columns: 240px minmax(0, 1fr) 380px; height: calc(100% - 45px); }
+  #side, #board, #chat { min-height: 0; }
+
+  /* conversations */
+  #side { background: var(--surface); border-right: 1px solid var(--line); overflow-y: auto; }
+  .side-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 10px 6px 18px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .side-head > span { display: inline-flex; align-items: center; gap: 7px; }
+  .side-head svg { width: 14px; height: 14px; }
+  #newBtn { width: 26px; height: 26px; }
+  #sessions { list-style: none; margin: 0; padding: 0 8px 16px; }
+  #sessions .group { padding: 14px 10px 4px; font-size: 11.5px; color: var(--muted); }
+  #sessions li.item { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; padding: 7px 10px 7px 16px; border-radius: 6px; cursor: pointer; }
+  #sessions li.item:hover { background: var(--paper); }
+  #sessions li.item.selected { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  #sessions .dot { display: none; position: absolute; left: 5px; top: 13px; width: 6px; height: 6px; border-radius: 50%; }
+  #sessions li.busy .dot { display: block; background: var(--accent); animation: pulse 1s infinite; }
+  #sessions li.new .dot { display: block; background: var(--accent); }
+  #sessions li.err .dot { display: block; background: var(--bad); }
+  #sessions .name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sessions .when { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #sessions li.new .when { color: var(--accent); }
+  #sessions .sub { grid-column: 1 / -1; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sessions .empty { padding: 10px 16px; font-size: 12.5px; color: var(--muted); }
+
+  /* the board */
+  #boardWrap { position: relative; min-height: 0; display: grid; }
+  #board { overflow-y: auto; padding: 24px 28px 56px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+  #hud { position: absolute; left: 0; right: 0; bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+  #hud .pill { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 12%, transparent); font-size: 13px; max-width: 70%; }
+  #hud .pill svg { width: 15px; height: 15px; color: var(--accent); }
+  #hud .label { font-weight: 500; }
+  #hud .heard { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hud .heard:empty { display: none; }
+  #hud .pill.wait { pointer-events: auto; border-color: var(--edge-amber); background: var(--tint-amber); color: var(--text-amber); }
+  #hud .pill.new { pointer-events: auto; padding: 0; border: 0; background: none; box-shadow: none; }
+  #hud .pill.new button { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 500; cursor: pointer; box-shadow: 0 6px 24px color-mix(in srgb, var(--ink) 12%, transparent); }
+  #hud .pill.wait button { border: 0; background: var(--edge-amber); color: #fff; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; cursor: pointer; }
+  #sessions li.waiting .dot { display: block; background: var(--edge-amber); }
+  #sessions li.waiting .when { color: var(--text-amber); }
+  #hud .hint { font-size: 11.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+  #hud .key { display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; font-size: 11.5px; color: var(--muted); }
+  #hud .key kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--paper); color: var(--ink); }
+  #hud .pill.quiet .key { display: none; }
+  #hud .wave { display: inline-flex; align-items: center; gap: 3px; height: 16px; }
+  #hud .wave i { width: 3px; height: 16px; border-radius: 2px; background: var(--accent); transform-origin: center; animation: wave 1.1s ease-in-out infinite; }
+  #hud .wave i:nth-child(2) { animation-delay: .15s; } #hud .wave i:nth-child(3) { animation-delay: .3s; } #hud .wave i:nth-child(4) { animation-delay: .45s; } #hud .wave i:nth-child(5) { animation-delay: .6s; }
+  #hud .pill.quiet .wave i { animation: pulse 1.2s infinite; transform: scaleY(.35); }
+  @keyframes wave { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+  #board > * { flex: none; }
+  #board .earlier { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11.5px; margin: 4px 0 -8px; }
+  #board .earlier::before, #board .earlier::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+  #board section.old { opacity: .85; }
+  #board .say-btn { width: 26px; height: 26px; opacity: 0; transition: opacity .15s; align-self: center; }
+  #board .say-btn svg { width: 15px; height: 15px; }
+  #board section:hover .say-btn { opacity: 1; }
+  #board .transcript { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: -6px 0 22px; max-width: 72ch; font-size: 13px; line-height: 1.6; }
+  #board .transcript::before { content: "Said on the board"; display: block; font-size: 11.5px; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+  #board .transcript p { margin: 0 0 10px; color: var(--muted); }
+  #board .transcript p:last-child { margin-bottom: 0; }
+  #board .empty { color: var(--muted); font-size: 13px; padding: 48px 0; text-align: center; }
+
+  /* conversation */
+  #chat { background: var(--surface); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  #chat > header { padding: 14px 16px 10px; font-weight: 500; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #msgs { flex: 1; overflow-y: auto; padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 18px; }
+  #msgs .msg { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; min-width: 0; }
+  #msgs .msg > :first-child { margin-top: 0; }
+  #msgs .msg > :last-child { margin-bottom: 0; }
+  #msgs .msg p { margin: 0 0 10px; }
+  #msgs .msg ul, #msgs .msg ol { margin: 0 0 10px; padding-left: 20px; }
+  #msgs .msg li { margin: 3px 0; }
+  #msgs .msg h1, #msgs .msg h2, #msgs .msg h3, #msgs .msg h4 { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  #msgs .msg blockquote { margin: 0 0 10px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--muted); }
+  #msgs .msg table { border-collapse: collapse; font-size: 12.5px; margin: 0 0 10px; }
+  #msgs .msg th, #msgs .msg td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+  #msgs .msg a { color: var(--accent); }
+  #msgs .msg.flash { animation: flash 1.6s ease-out; border-radius: 6px; }
+  @keyframes flash { 0%, 30% { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } 100% { box-shadow: none; } }
+  #board section { cursor: pointer; }
+  #msgs .msg.you { align-self: flex-end; max-width: 88%; background: var(--paper); border-radius: 10px 10px 3px 10px; padding: 8px 12px; }
+  #msgs .msg.board { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; padding: 12px 14px; color: var(--ink); }
+  #msgs .msg.board::before { content: "Said on the board"; display: block; font-size: 11.5px; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+  #msgs .msg.board p { margin: 0 0 10px; color: var(--muted); }
+  #msgs .code { position: relative; margin: 8px 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: hidden; }
+  #msgs .code .lang { position: absolute; top: 6px; right: 10px; font: 10.5px var(--mono); color: var(--muted); text-transform: lowercase; }
+  #msgs .code pre { margin: 0; padding: 10px 12px; overflow-x: auto; font: 12px/1.55 var(--mono); white-space: pre; }
+  #msgs .code code { background: none; border: 0; padding: 0; font: inherit; }
+  #msgs code { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font: 12px var(--mono); }
+  .hljs-comment, .hljs-quote { color: var(--muted); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag, .hljs-meta, .hljs-doctag { color: var(--edge-purple); }
+  .hljs-string, .hljs-regexp, .hljs-addition { color: var(--edge-green); }
+  .hljs-number, .hljs-literal, .hljs-symbol { color: var(--edge-amber); }
+  .hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: var(--edge-blue); }
+  .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-type, .hljs-built_in { color: var(--text-blue); }
+  .hljs-deletion { color: var(--edge-red); }
+  .hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 600; }
+  #msgs .empty { color: var(--muted); font-size: 12.5px; }
+
+  /* composer */
+  #dock { border-top: 1px solid var(--line); padding: 12px 16px 12px; display: grid; gap: 8px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  #cwd { flex: 1; min-width: 0; font: 12px var(--mono); }
+  select, input, textarea { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+  textarea { flex: 1 1 0; width: 100%; min-width: 0; resize: none; min-height: 40px; max-height: 40vh; line-height: 1.45; }
+  textarea::placeholder, input::placeholder { color: var(--muted); }
+  .row > button { flex: none; }
+  #dock button { border: 0; background: transparent; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--muted); }
+  #dock button:hover { color: var(--ink); background: var(--paper); }
+  #dock button:disabled { opacity: .4; cursor: default; }
+  #dock #sendBtn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }
+  #dock #sendBtn:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); color: var(--accent-ink); }
+  #dock #sendBtn svg.icon { width: 20px; height: 20px; stroke-width: 2.25; }
+  #dock #micBtn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); color: var(--ink); }
+  #dock #micBtn svg.icon { width: 22px; height: 22px; }
+  #dock #stopBtn { width: 40px; height: 40px; border-radius: 50%; }
+  #dock #micBtn.on { background: var(--accent); color: var(--accent-ink); animation: pulse 1.2s infinite; }
+  #dock #micBtn.on:hover { color: var(--accent-ink); }
+  #dock #mode { flex: none; width: auto; background: transparent; border: 0; padding: 0; font-size: 12px; color: var(--muted); cursor: pointer; }
+  #status { flex: 1; min-width: 0; min-height: 18px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; overflow: hidden; }
+  #status .spin { width: 11px; height: 11px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  #status .err { color: var(--bad); }
+  #status code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 11.5px var(--mono); }
+  #status .heard { color: var(--ink); font-style: italic; }
+  .chip { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; background: var(--tint-red); color: var(--text-red); }
+
+  @media (max-width: 1180px) {
+    #shell { grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    #boardWrap { min-height: 0; }
+    #chat { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 44vh; }
+  }
+  @media (max-width: 720px) {
+    #shell { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; }
+    #side { border-right: 0; border-bottom: 1px solid var(--line); max-height: 28vh; }
+    #board { padding: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+<header id="top">
+  <h1>Glance</h1>
+  <span class="spacer"></span>
+  <label class="pick" title="Palette"><i data-icon="palette"></i><select id="theme" aria-label="Palette">
+    <option value="">Graphite</option><option value="paper">Paper</option><option value="midnight">Midnight</option><option value="violet">Violet</option><option value="mono">Mono</option>
+  </select></label>
+  <label class="pick" title="Appearance"><i data-icon="contrast"></i><select id="scheme" aria-label="Appearance">
+    <option value="">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
+  </select></label>
+  <span id="conn" title="Connection to the Glance server"><i></i><span>offline</span></span>
+  <button id="follow" class="ic" title="Follow the latest: jump to whichever conversation updates"><i data-icon="follow"></i></button>
+  <button id="voice" class="ic" title="Read new answers aloud"></button>
+</header>
+
+<div id="shell">
+  <nav id="side">
+    <div class="side-head"><span><i data-icon="chat"></i>Conversations</span><button id="newBtn" class="ic" title="Start a new session"><i data-icon="plus"></i></button></div>
+    <ul id="sessions"></ul>
+  </nav>
+
+  <div id="boardWrap">
+    <main id="board"></main>
+    <div id="hud" hidden>
+      <div class="pill" id="hudListen" hidden><i data-icon="mic"></i><span class="label">Listening</span><span class="heard"></span></div>
+      <div class="pill" id="hudSpeak" hidden><span class="wave"><i></i><i></i><i></i><i></i><i></i></span><span class="label">Responding</span><span class="key"><kbd>Esc</kbd> to stop</span></div>
+      <div class="hint" id="hudHint" hidden>View response in chat window</div>
+      <div class="pill new" id="hudNew" hidden><button id="hudNewBtn">New visual below</button></div>
+      <div class="pill wait" id="hudWait" hidden><span class="label"></span><button id="hudSwitch">Switch</button></div>
+    </div>
+  </div>
+
+  <aside id="chat">
+    <header id="chatTitle">Conversation</header>
+    <div id="msgs"></div>
+    <div id="dock">
+      <select id="target" aria-label="Session" hidden></select>
+      <input id="cwd" placeholder="Folder for the new session, e.g. ~/code/app" aria-label="Folder" hidden>
+      <div class="row">
+        <textarea id="msg" placeholder="Reply, or hold Space to talk"></textarea>
+        <button id="micBtn" class="ic" title="Hold to talk (or hold the space bar), let go to send"><i data-icon="mic"></i></button>
+        <button id="sendBtn" class="ic" title="Send"><i data-icon="send"></i></button>
+        <button id="stopBtn" class="ic" title="Stop" hidden><i data-icon="stop"></i></button>
+      </div>
+      <div class="row">
+        <select id="mode" aria-label="Permission mode" title="What Claude may do without asking">
+          <option value="auto">Auto approve safe actions</option>
+          <option value="acceptEdits">Edits only</option>
+          <option value="plan">Plan only, no changes</option>
+          <option value="bypassPermissions">Allow everything</option>
+        </select>
+        <div id="status"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="/board/marked.min.js"></script>
+<script src="/board/highlight.min.js"></script>
+<script src="/board/mermaid.min.js"></script>
+<script src="/board/viz.js"></script>
+<script>
+const TOKEN = '__BOARD_TOKEN__';
+const ICONS = {
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
+  speaker: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5.5a10 10 0 0 1 0 13"/>',
+  muted: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/>',
+  text: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  palette: '<path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2a5.5 5.5 0 0 0 5.5-5.5C22 6 17.5 2 12 2Z"/><circle cx="7.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="10.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="15.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="18" cy="10.5" r=".6" fill="currentColor"/>',
+  contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>',
+  follow: '<circle cx="12" cy="12" r="7"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>',
+  send: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+  switch: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+};
+const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+for (const el of document.querySelectorAll('[data-icon]')) el.outerHTML = icon(el.dataset.icon);
+const NEW = '__new__';
+const $ = id => document.getElementById(id);
+const state = {};        // sessionId -> { busy, line, isError, denials, lastMessage }
+const known = new Map(); // sessionId -> { label, title, cwd, updated }, for sessions not on the board yet
+let lastBoard = '';
+const heard = new Map(); // section id -> narration text already seen
+let voiceOn = true;
+try { voiceOn = localStorage.getItem('board-voice') !== 'off'; } catch {}
+let followOn = false;
+try { followOn = localStorage.getItem('board-follow') === 'on'; } catch {}
+const announced = new Set(); // 'id:updated' of waiting notices already spoken
+let booted = false;          // after the first load; what's already waiting then isn't announced
+const dismissed = new Set(); // waiting banners already acted on
+
+function s(id) { return state[id] ||= { busy: false, line: '', isError: false, denials: [], lastMessage: '' }; }
+function selected() { return $('target').value === NEW ? null : $('target').value; }
+const folderOf = cwd => (cwd || '').split('/').filter(Boolean).pop() || '~';
+
+const boards = new Map(); // session id -> { cwd, updated, ts, title, count } for conversations with visuals
+const seen = new Map();   // session id -> ts of the latest visual the user has looked at
+let shown = { id: null, ts: '' };
+
+async function loadBoards() {
+  try {
+    const list = await (await fetch('/boards', { headers: { 'X-Board-Token': TOKEN } })).json();
+    boards.clear();
+    for (const b of list) boards.set(b.id, b);
+    if (!seen.size) for (const b of list) seen.set(b.id, b.ts); // what's there when the page opens isn't "new"
+  } catch {}
+  refreshTargets();
+}
+
+// The board pane shows every visual the selected conversation has produced in order, newest at the bottom,
+// so a new one is appended below and never moves what you're reading.
+const atBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+function scrollBoardToEnd(smooth = false) {
+  const board = $('board');
+  board.scrollTo({ top: board.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  $('hudNew').hidden = true;
+}
+async function showVisuals(force = false) {
+  const id = selected();
+  const board = $('board');
+  if (!id || !boards.has(id)) {
+    shown = { id, ts: '' };
+    board.innerHTML = `<div class="empty">${id ? 'No visuals from this conversation yet.' : 'Pick a conversation, or start a new one.'}</div>`;
+    return;
+  }
+  const ts = boards.get(id).ts || '';
+  if (!force && shown.id === id && shown.ts === ts) return;
+  const sameConversation = shown.id === id;
+  shown = { id, ts };
+  let entries = [];
+  try { entries = await (await fetch(`/visuals?session=${id}`, { headers: { 'X-Board-Token': TOKEN } })).json(); } catch {}
+  if (selected() !== id) return;
+  const parse = (html, ts) => { const sec = new DOMParser().parseFromString(html, 'text/html').querySelector('section'); if (sec) { sec.removeAttribute('id'); sec.dataset.ts = ts || ''; } return sec; };
+  const existing = [...board.querySelectorAll('section')];
+  const current = existing[existing.length - 1]; // the newest is last
+  const finish = () => { seen.set(id, ts); renderChat(); render(); };
+  // A revision of the visual on screen is swapped in place, so nothing moves.
+  if (sameConversation && current && entries.length && existing.length === entries.length) {
+    const sec = parse(entries[0].html, entries[0].ts);
+    if (sec && sec.dataset.updated !== current.dataset.updated) {
+      const wasAtEnd = atBottom(board);
+      current.replaceWith(sec);
+      await renderBoard(sec);
+      addSayButtons(sec);
+      if (wasAtEnd) scrollBoardToEnd();
+      return finish();
+    }
+  }
+  // One new visual in the conversation you're on: append it below, and only follow it if you were already at the end.
+  if (sameConversation && current && existing.length === entries.length - 1) {
+    const sec = parse(entries[0].html, entries[0].ts);
+    if (sec) {
+      const wasAtEnd = atBottom(board);
+      board.querySelector('.earlier')?.remove();
+      for (const old of existing) old.classList.add('old');
+      board.append(Object.assign(document.createElement('div'), { className: 'earlier', textContent: 'Latest' }), sec);
+      await renderBoard(sec);
+      addSayButtons(sec);
+      if (wasAtEnd) scrollBoardToEnd(true);
+      else $('hudNew').hidden = false;
+      return finish();
+    }
+  }
+  board.innerHTML = '';
+  $('hudNew').hidden = true;
+  const ordered = entries.slice().reverse(); // oldest first
+  ordered.forEach((e, n) => {
+    const sec = parse(e.html, e.ts);
+    if (!sec) return;
+    const last = n === ordered.length - 1;
+    if (last && n) board.append(Object.assign(document.createElement('div'), { className: 'earlier', textContent: 'Latest' }));
+    if (!last) sec.classList.add('old');
+    board.append(sec);
+  });
+  if (!board.children.length) board.innerHTML = '<div class="empty">No visuals from this conversation yet.</div>';
+  await renderBoard(board);
+  addSayButtons(board);
+  scrollBoardToEnd();
+  finish();
+}
+$('board').addEventListener('scroll', () => { if (atBottom($('board'))) $('hudNew').hidden = true; }, { passive: true });
+
+// Clicking a visual jumps the chat to the turn that produced it: the last prompt sent before the visual was posted,
+// and the reply that follows it. (A reply's progress lines are merged into one message stamped at its start, so the
+// reply itself can carry an earlier time than the visual.)
+$('board').addEventListener('click', e => {
+  if (e.target.closest('button, a, .transcript') || getSelection()?.toString()) return;
+  const sec = e.target.closest('section');
+  const ts = sec?.dataset.ts;
+  if (!ts) return;
+  const msgs = [...$('msgs').querySelectorAll('.msg[data-ts]')].filter(m => m.dataset.ts);
+  const prompt = [...msgs].reverse().find(m => m.classList.contains('you') && m.dataset.ts <= ts);
+  const after = prompt && msgs[msgs.indexOf(prompt) + 1];
+  const target = (after?.classList.contains('claude') && after) || prompt;
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  for (const m of msgs) m.classList.remove('flash');
+  void target.offsetWidth;
+  target.classList.add('flash');
+});
+
+function addSayButtons(root) {
+  for (const sec of root.querySelectorAll('section')) {
+    const text = sec.querySelector('[data-say]')?.textContent.trim();
+    if (!text) continue;
+    const key = `${sec.dataset.session}:${sec.dataset.updated}`;
+    const btn = Object.assign(document.createElement('button'), { className: 'say-btn ic', innerHTML: icon('speaker'), title: 'Read this aloud' });
+    btn.onclick = e => { e.stopPropagation(); post('/speak', { key, text, force: true }); };
+    const show = Object.assign(document.createElement('button'), { className: 'say-btn ic', innerHTML: icon('text'), title: 'Show what it says' });
+    show.onclick = e => {
+      e.stopPropagation();
+      const open = sec.querySelector(':scope > .transcript');
+      if (open) return open.remove();
+      const p = Object.assign(document.createElement('div'), { className: 'transcript' });
+      p.innerHTML = narrationHtml(text);
+      sec.querySelector('header').after(p);
+    };
+    sec.querySelector('header')?.append(btn, show);
+  }
+}
+
+// A section changed on disk: refresh the list, redraw if it's the one on screen, read the newest narration aloud.
+async function boardChanged(changed = []) {
+  await loadBoards();
+  const mine = changed.find(c => c.id === selected());
+  const others = changed.filter(c => c.id !== selected());
+  if (followOn && others.length && !mine) {
+    // Follow mode: go to whoever just spoke; the switch itself reads it aloud.
+    $('target').value = others[others.length - 1].id;
+    render();
+    return;
+  }
+  if (mine) {
+    await showVisuals(true);
+    if (voiceOn && mine.say) post('/speak', { key: `${mine.id}:${mine.updated}`, text: mine.say });
+    seen.set(mine.id, boards.get(mine.id)?.ts || '');
+  }
+  // Everyone else gets a dot in the sidebar and, when nothing is playing, one short line.
+  for (const c of others) if (voiceOn) post('/nudge', { id: c.id, text: `${folderOf(boards.get(c.id)?.cwd)} has something to show` });
+}
+
+// Text with `names` shown as code, everything else escaped.
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function withCode(text) {
+  return String(text).split(/`([^`]+)`/).map((part, i) => i % 2 ? `<code>${esc(part)}</code>` : esc(part)).join('');
+}
+
+// ---------- conversation pane ----------
+
+const chat = { id: null, since: '', items: [] };
+
+// Markdown, with raw HTML escaped and code highlighted.
+if (window.marked) {
+  marked.use({
+    breaks: true,
+    gfm: true,
+    renderer: {
+      html(token) { return esc(typeof token === 'string' ? token : (token.text ?? token.raw ?? '')); },
+      code(token) {
+        const src = typeof token === 'string' ? token : token.text;
+        const lang = (typeof token === 'string' ? arguments[1] : token.lang) || '';
+        let body = esc(src);
+        try {
+          if (window.hljs) body = lang && hljs.getLanguage(lang) ? hljs.highlight(src, { language: lang }).value : hljs.highlightAuto(src).value;
+        } catch {}
+        return `<div class="code">${lang ? `<span class="lang">${esc(lang)}</span>` : ''}<pre><code>${body}</code></pre></div>`;
+      },
+    },
+  });
+}
+// Tagged blocks the terminal injects (<task-notification>, <system-reminder>, …) are shown as code.
+function prettyXml(src) {
+  const pad = n => '  '.repeat(Math.max(0, n));
+  let out = '', depth = 0, lastWasTag = false;
+  for (const tok of src.match(/<[^>]+>|[^<]+/g) || []) {
+    if (tok.startsWith('</')) {
+      depth--;
+      if (lastWasTag) out += '\n' + pad(depth);
+      out += tok;
+      lastWasTag = true;
+    } else if (tok.startsWith('<')) {
+      out += (out ? '\n' : '') + pad(depth) + tok;
+      if (!tok.endsWith('/>') && !tok.startsWith('<?') && !tok.startsWith('<!')) depth++;
+      lastWasTag = true;
+    } else {
+      const t = tok.trim();
+      if (!t) continue;
+      if (t.length <= 80 && !t.includes('\n')) { out += t; lastWasTag = false; }
+      else { out += '\n' + pad(depth) + t.replace(/\n\s*/g, '\n' + pad(depth)); lastWasTag = true; }
+    }
+  }
+  return out;
+}
+function fenceTags(text) {
+  return String(text).replace(/(^|\n)[ \t]*(<([a-z][\w-]*)(?:\s[^>]*)?>[\s\S]*?<\/\3>)/g, (m, lead, block) => `${lead}\n\`\`\`xml\n${prettyXml(block.trim())}\n\`\`\`\n`);
+}
+function richText(text) {
+  if (!window.marked) return withCode(text);
+  try { return marked.parse(fenceTags(text)); } catch { return withCode(text); }
+}
+
+// Narration as short paragraphs, two or three sentences each.
+function narrationHtml(text) {
+  const sentences = String(text).split(/(?<=[.!?])\s+(?=[A-Z`"'(])/);
+  const paras = [];
+  for (let i = 0; i < sentences.length; i += 2) paras.push(sentences.slice(i, i + 2).join(' '));
+  return paras.map(p => `<p>${withCode(p)}</p>`).join('');
+}
+
+async function loadChat(force = false) {
+  const id = selected();
+  if (id !== chat.id) { chat.id = id; chat.since = ''; chat.items = []; chat.rendered = false; force = true; } // a switched conversation always opens at its latest message
+  if (!id) return renderChat();
+  try {
+    const res = await fetch(`/history?session=${id}&since=${force ? '' : chat.since}`, { headers: { 'X-Board-Token': TOKEN } });
+    const data = await res.json();
+    if (chat.id !== id || data.same) return;
+    chat.since = String(data.mtime);
+    chat.items = data.items || [];
+    renderChat();
+  } catch {}
+}
+
+function renderChat() {
+  const box = $('msgs');
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  $('chatTitle').textContent = chat.id ? labelFor(chat.id) : 'New session';
+  box.innerHTML = '';
+  for (const item of chat.items) {
+    const el = Object.assign(document.createElement('div'), { className: `msg ${item.who}` });
+    el.innerHTML = richText(item.text);
+    el.dataset.ts = item.ts || '';
+    box.append(el);
+  }
+  const sections = $('board').querySelectorAll('section');
+  const narration = chat.id && shown.id === chat.id && sections[sections.length - 1]?.querySelector('[data-say]')?.textContent.trim();
+  if (narration) {
+    const el = Object.assign(document.createElement('div'), { className: 'msg board' });
+    el.innerHTML = narrationHtml(narration);
+    box.append(el);
+  }
+  if (!box.children.length) box.append(Object.assign(document.createElement('div'), { className: 'empty', textContent: chat.id ? 'Nothing said yet.' : 'Pick a folder below and send the first message.' }));
+  if (nearBottom || !chat.rendered) box.scrollTop = box.scrollHeight;
+  chat.rendered = true;
+}
+
+setInterval(() => loadChat(), 2000);
+
+// The strip at the bottom of the board: listening while you talk, responding while Claude answers.
+function renderHud() {
+  const id = selected();
+  const busy = !!(id && state[id]?.busy);
+  const listening = talk.held;
+  const speaking = talk.speaking && voiceOn;
+  $('hudListen').hidden = !listening;
+  $('hudSpeak').hidden = listening || !(speaking || busy);
+  $('hudSpeak').classList.toggle('quiet', !speaking);
+  $('hudSpeak').querySelector('.label').textContent = speaking ? 'Responding' : 'Thinking';
+  $('hudHint').hidden = listening || !(speaking || busy);
+  const allWaiting = [...boards.values(), ...[...known.entries()].map(([kid, k]) => ({ id: kid, ...k }))].filter(b => b.waiting && b.id !== id);
+  const keyOf = b => `${b.id}:${b.updated}`;
+  // The banner is a prompt, not a list: it shows a conversation once, until you switch or it goes stale.
+  if (!booted) for (const b of allWaiting) if (Date.now() - new Date(b.updated) > 30 * 60000) dismissed.add(keyOf(b));
+  const waiting = allWaiting.filter(b => !dismissed.has(keyOf(b))).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0];
+  $('hudWait').hidden = listening || !waiting;
+  if (waiting) {
+    $('hudWait').querySelector('.label').textContent = `${folderOf(waiting.cwd)} is waiting on you`;
+    $('hudSwitch').onclick = () => { for (const b of allWaiting) dismissed.add(keyOf(b)); $('target').value = waiting.id; render(); };
+    const key = keyOf(waiting);
+    if (booted && voiceOn && !announced.has(key)) post('/speak', { key, text: `${folderOf(waiting.cwd)} is waiting on you` });
+    announced.add(key);
+  }
+  $('hud').hidden = $('hudListen').hidden && $('hudSpeak').hidden && $('hudWait').hidden && $('hudNew').hidden;
+}
+
+function renderVoice() {
+  $('voice').innerHTML = icon(voiceOn ? 'speaker' : 'muted');
+  $('voice').classList.toggle('off', !voiceOn);
+  $('voice').title = voiceOn ? 'Reading new answers aloud. Click to mute.' : 'Muted. Click to read new answers aloud.';
+}
+$('voice').onclick = () => {
+  voiceOn = !voiceOn;
+  try { localStorage.setItem('board-voice', voiceOn ? 'on' : 'off'); } catch {}
+  post('/mute', { on: !voiceOn }); // replies stay text while muted; talking still works
+  renderVoice();
+  renderHud();
+};
+renderVoice();
+
+// ---------- follow mode ----------
+function renderFollow() { $('follow').classList.toggle('on', followOn); }
+$('follow').onclick = () => {
+  followOn = !followOn;
+  try { localStorage.setItem('board-follow', followOn ? 'on' : 'off'); } catch {}
+  renderFollow();
+};
+renderFollow();
+
+// ---------- palette ----------
+for (const [id, key] of [['theme', 'board-theme'], ['scheme', 'board-scheme']]) {
+  const el = $(id);
+  try { el.value = localStorage.getItem(key) || ''; } catch {}
+  el.onchange = () => {
+    if (el.value) document.documentElement.dataset[id] = el.value; else delete document.documentElement.dataset[id];
+    try { el.value ? localStorage.setItem(key, el.value) : localStorage.removeItem(key); } catch {}
+    showVisuals(true); // diagrams take their colors at render time
+  };
+}
+
+// ---------- sidebar: every session we know about ----------
+
+function labelFor(id) {
+  const cwd = boards.get(id)?.cwd || known.get(id)?.cwd || '';
+  return `${folderOf(cwd)}  ${id.slice(0, 8)}`;
+}
+
+function refreshTargets() {
+  const sel = $('target');
+  const keep = sel.value;
+  const withVisuals = [...boards.values()].map(b => {
+    const title = (b.title || '').replace(/session [0-9a-f]{8}/i, '').replace(/\s*[—–·-]\s*(?=[—–·-])/g, '').replace(/^[\s—–·-]+|[\s—–·-]+$/g, '');
+    return { id: b.id, folder: folderOf(b.cwd), title, updated: b.updated || b.ts || '', waiting: !!b.waiting, fresh: (seen.get(b.id) || '') < (b.ts || '') && b.id !== selected() };
+  });
+  const recent = [];
+  for (const [id, k] of known) if (!boards.has(id)) recent.push({ id, folder: folderOf(k.cwd), title: k.title || '', updated: k.updated || '', waiting: !!k.waiting });
+  recent.sort((a, b) => (b.updated || '').localeCompare(a.updated || ''));
+
+  sel.innerHTML = '';
+  for (const x of [...withVisuals, ...recent]) sel.add(new Option(labelFor(x.id), x.id));
+  sel.add(new Option('New session', NEW));
+  const all = new Set([...withVisuals, ...recent].map(x => x.id));
+  sel.value = all.has(keep) || keep === NEW ? keep : (all.values().next().value || NEW);
+
+  const list = $('sessions');
+  list.innerHTML = '';
+  const group = (label, items) => {
+    if (!items.length) return;
+    list.append(Object.assign(document.createElement('li'), { className: 'group', textContent: label }));
+    for (const x of items) {
+      const li = document.createElement('li');
+      li.className = 'item' + (x.fresh ? ' new' : '') + (x.waiting ? ' waiting' : '');
+      li.dataset.id = x.id;
+      li.innerHTML = `<i class="dot"></i><span class="name">${esc(x.folder)}</span><span class="when">${x.updated ? esc(ago(x.updated)) : ''}</span><span class="sub">${esc(x.title || x.id.slice(0, 8))}</span>`;
+      li.onclick = () => { if (x.waiting) dismissed.add(`${x.id}:${x.updated}`); sel.value = x.id; render(); };
+      list.append(li);
+    }
+  };
+  group('With visuals', withVisuals);
+  group('Recent', recent);
+  if (!list.children.length) list.append(Object.assign(document.createElement('li'), { className: 'empty', textContent: 'No sessions yet.' }));
+  render();
+}
+
+function ago(iso) {
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (!isFinite(m)) return '';
+  return m < 1 ? 'now' : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+}
+
+async function loadSessions() {
+  try {
+    const list = await (await fetch('/sessions', { headers: { 'X-Board-Token': TOKEN } })).json();
+    for (const x of list) known.set(x.id, { title: x.title || '', cwd: x.cwd, updated: x.updated, waiting: !!x.waiting });
+    refreshTargets();
+  } catch {}
+}
+setInterval(loadSessions, 15000);
+setInterval(loadBoards, 10000); // picks up "waiting on you" changes
+
+function render() {
+  const id = selected();
+  if (id !== chat.id) {
+    loadChat();
+    // Switching to a conversation whose latest narration you never heard reads it now.
+    const b = id && boards.get(id);
+    if (b && voiceOn && seen.size && (seen.get(id) || '') < (b.ts || '') && b.say) post('/speak', { key: `${id}:${b.updated}`, text: b.say, force: true });
+  }
+  $('cwd').hidden = id !== null;
+  if (id !== shown.id || (id && (boards.get(id)?.ts || '') !== shown.ts)) showVisuals();
+  for (const li of $('sessions').querySelectorAll('li.item')) {
+    li.classList.toggle('selected', li.dataset.id === id);
+    li.classList.toggle('busy', !!state[li.dataset.id]?.busy);
+    li.classList.toggle('err', !state[li.dataset.id]?.busy && !!state[li.dataset.id]?.isError);
+  }
+  renderHud();
+  const st = id ? s(id) : { busy: false, line: '', denials: [] };
+  $('sendBtn').disabled = st.busy;
+  $('stopBtn').hidden = !st.busy;
+  const status = $('status');
+  status.innerHTML = '';
+  if (st.busy) status.append(Object.assign(document.createElement('span'), { className: 'spin' }));
+  if (st.line) {
+    const line = document.createElement(st.busy ? 'code' : 'span');
+    line.textContent = st.line;
+    if (st.isError) line.className = 'err';
+    status.append(line);
+  }
+  if (!st.busy && st.denials?.length) {
+    for (const name of st.denials) status.append(Object.assign(document.createElement('span'), { className: 'chip', textContent: `blocked: ${name}` }));
+    const retry = Object.assign(document.createElement('button'), { textContent: 'Retry with this mode' });
+    retry.onclick = () => sendMessage(st.lastMessage, st.lastVoice);
+    status.append(retry);
+  }
+}
+
+async function post(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Board-Token': TOKEN }, body: JSON.stringify(body) });
+  return { ok: res.ok, data: await res.json().catch(() => ({})) };
+}
+
+async function sendMessage(text, voice = false) {
+  const message = (text ?? $('msg').value).trim();
+  if (!message) return;
+  const sessionId = selected();
+  const cwd = sessionId ? (boards.get(sessionId)?.cwd || known.get(sessionId)?.cwd || '~') : ($('cwd').value.trim() || '~');
+  const { ok, data } = await post('/send', { sessionId, cwd, message, mode: $('mode').value, voice });
+  if (!ok) { alertLine(sessionId, data.error || 'Send failed'); return; }
+  if (!sessionId) {
+    known.set(data.sessionId, { title: message.slice(0, 60), cwd: data.cwd, updated: new Date().toISOString() });
+    refreshTargets();
+    $('target').value = data.sessionId;
+  }
+  Object.assign(s(data.sessionId), { lastMessage: message, lastVoice: voice });
+  if (text === undefined) $('msg').value = '';
+  render();
+}
+
+function alertLine(id, text) {
+  if (id) { Object.assign(s(id), { line: text, isError: true, busy: false }); return render(); }
+  $('status').innerHTML = '';
+  $('status').append(Object.assign(document.createElement('span'), { className: 'err', textContent: text }));
+}
+
+function setConn(on) {
+  $('conn').classList.toggle('on', on);
+  $('conn').lastElementChild.textContent = on ? 'live' : 'offline';
+}
+
+function connect() {
+  const es = new EventSource(`/events?token=${TOKEN}`);
+  es.onopen = () => setConn(true);
+  let checking = false;
+  es.onerror = () => {
+    setConn(false);
+    if (checking) return;
+    checking = true;
+    // If the server came back with a different key, this page can't talk to it; start over.
+    setTimeout(async () => {
+      try { const r = await fetch('/sessions', { headers: { 'X-Board-Token': TOKEN } }); if (r.status === 403) location.reload(); } catch {}
+      checking = false;
+    }, 3000);
+  };
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.kind === 'reload') return location.reload();
+    if (ev.kind === 'board') return boardChanged(ev.changed || []);
+    if (ev.kind === 'hello') {
+      for (const id of ev.running) s(id).busy = true;
+      talk.speaking = ev.speaking;
+      if (ev.muted === voiceOn) post('/mute', { on: !voiceOn }); // this page's choice wins
+      return render();
+    }
+    if (ev.kind === 'speaking') { talk.speaking = ev.on; return renderHud(); }
+    if (ev.kind === 'muted') return;
+    const st = s(ev.sessionId);
+    if (ev.kind === 'start') Object.assign(st, { busy: true, line: 'Thinking…', isError: false, denials: [] });
+    if (ev.kind === 'tool') st.line = ev.detail ? `${ev.name}: ${ev.detail}` : ev.name;
+    if (ev.kind === 'text') st.line = 'Thinking…';
+    if (ev.kind === 'text' || ev.kind === 'done') loadChat();
+    // The reply itself already shows in the chat, so the status line only keeps errors.
+    if (ev.kind === 'done') Object.assign(st, { busy: false, line: ev.isError ? ev.text.split('\n')[0] : '', isError: ev.isError, denials: ev.denials || [] });
+    render();
+  };
+}
+
+$('hudNewBtn').onclick = () => scrollBoardToEnd(true);
+$('newBtn').onclick = () => { $('target').value = NEW; render(); $('cwd').focus(); };
+$('target').onchange = render;
+$('sendBtn').onclick = () => sendMessage();
+$('stopBtn').onclick = () => post('/stop', { sessionId: selected() });
+
+// ---------- push to talk: hold space (or the mic button), let go to send ----------
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const talk = { held: false, listening: false, speaking: false, rec: null, kept: '', heard: '' };
+
+function pressTalk() {
+  if (talk.held) return;
+  if (!Recognition) return alertLine(selected(), 'This browser has no speech recognition. Use Chrome or Safari.');
+  post('/hush', {}); // talking over Claude cuts it off
+  talk.held = true;
+  talk.kept = '';
+  talk.heard = '';
+  listen();
+  renderMic();
+}
+
+function releaseTalk() {
+  if (!talk.held) return;
+  talk.held = false;
+  if (talk.rec) talk.rec.stop(); // onend then sends everything
+  else finish();
+  renderMic();
+}
+
+function listen() {
+  const rec = new Recognition();
+  rec.lang = navigator.language || 'en-US';
+  rec.interimResults = true;
+  rec.continuous = true;
+  talk.rec = rec;
+  rec.onresult = e => {
+    talk.heard = [...e.results].map(r => r[0].transcript).join('').trim();
+    showHeard([talk.kept, talk.heard].filter(Boolean).join(' '));
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      talk.held = false;
+      alertLine(selected(), 'Microphone blocked. Allow it in the address bar, then try again.');
+    }
+  };
+  rec.onend = () => {
+    talk.rec = null;
+    talk.listening = false;
+    talk.kept = [talk.kept, talk.heard].filter(Boolean).join(' ');
+    talk.heard = '';
+    if (talk.held) listen(); // the browser sometimes stops on its own during a long pause
+    else finish();
+    renderMic();
+  };
+  try { rec.start(); talk.listening = true; } catch { talk.listening = false; }
+  showHeard(talk.kept);
+}
+
+function finish() {
+  const said = talk.kept.trim();
+  talk.kept = '';
+  if (said) sendMessage(said, true);
+  else render();
+}
+
+function showHeard(text) {
+  $('hudListen').querySelector('.heard').textContent = text || '';
+  renderHud();
+}
+
+function renderMic() {
+  $('micBtn').classList.toggle('on', talk.held);
+  renderHud();
+}
+
+const typing = el => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.isContentEditable);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return post('/hush', {});
+  if (e.code !== 'Space' || typing(e.target)) return;
+  e.preventDefault();
+  if (!e.repeat) pressTalk();
+});
+document.addEventListener('keyup', e => {
+  if (e.code !== 'Space' || typing(e.target)) return;
+  e.preventDefault();
+  releaseTalk();
+});
+window.addEventListener('blur', releaseTalk);
+$('micBtn').addEventListener('pointerdown', e => { e.preventDefault(); $('micBtn').setPointerCapture(e.pointerId); pressTalk(); });
+$('micBtn').addEventListener('pointerup', releaseTalk);
+$('micBtn').addEventListener('pointercancel', releaseTalk);
+
+$('msg').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(); }
+});
+
+loadBoards().then(loadSessions).then(() => { booted = true; });
+connect();
+</script>
+</body>
+</html>

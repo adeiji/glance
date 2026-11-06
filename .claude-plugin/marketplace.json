@@ -1,0 +1,12 @@
+{
+  "name": "glance",
+  "description": "Glance: see what Claude is doing instead of reading it",
+  "owner": { "name": "adeiji" },
+  "plugins": [
+    {
+      "name": "glance",
+      "source": "./",
+      "description": "A page beside Claude Code that turns every answer into a picture and reads it aloud, across all your sessions."
+    }
+  ]
+}
