@@ -44,6 +44,7 @@ function saveSettings(patch) {
   if (typeof patch.chime === 'boolean') next.chime = patch.chime;
   if (['slower', 'normal', 'faster'].includes(patch.speechRate)) next.speechRate = patch.speechRate;
   fs.writeFileSync(CONFIG, JSON.stringify(next, null, 2));
+  console.log(`settings ${JSON.stringify(patch)} from ${process.argv.slice(2).join(' ') || 'page'}`);
   return next;
 }
 
@@ -54,7 +55,7 @@ if (process.argv.includes('--off') || process.argv.includes('--on')) {
   const on = process.argv.includes('--on');
   saveSettings({ enabled: on });
   console.log(on ? `Glance is on. New sessions will draw on the board; open it with node ${__filename} --open` : 'Glance is off. New sessions are plain Claude Code until you turn it back on.');
-  if (!on) http.request(`${URL_BASE}/off`, { method: 'POST', timeout: 500 }, res => res.resume()).on('error', () => {}).end();
+  http.request(`${URL_BASE}/poke`, { method: 'POST', timeout: 500 }, res => res.resume()).on('error', () => {}).end(); // open pages learn of the change at once
 } else if (process.argv.includes('--serve')) serve();
 else launch(process.argv.includes('--open'));
 
@@ -585,7 +586,7 @@ function serve() {
     const url = new URL(req.url, URL_BASE);
 
     if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
-    if (req.method === 'POST' && url.pathname === '/off') { broadcast({ kind: 'settings', settings: settings() }); return send(res, 200, { ok: true }); }
+    if (req.method === 'POST' && url.pathname === '/poke') { broadcast({ kind: 'settings', settings: settings() }); return send(res, 200, { ok: true }); }
 
     if (req.method === 'GET' && url.pathname === '/') {
       return send(res, 200, fs.readFileSync(UI, 'utf8').replace('__BOARD_TOKEN__', token), 'text/html; charset=utf-8');

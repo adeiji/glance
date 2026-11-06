@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glance</title>
+<meta name="description" content="See what Claude is doing instead of reading it. Glance is a free page beside Claude Code that turns every answer into a picture and reads it aloud, across all your sessions.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<meta property="og:title" content="Glance">
+<meta property="og:description" content="See what Claude is doing instead of reading it. A free visual, spoken board beside Claude Code.">
+<meta property="og:image" content="https://adeiji.github.io/glance/board.jpg">
+<style>
+  :root { --bg: #0a0a2a; --bg2: #11113a; --ink: #fbf4e6; --muted: #a9a7c2; --accent: #f9731f; --line: rgba(251,244,230,.12); --mono: ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 22px 0; }
+  header img { width: 32px; height: 32px; }
+  header b { font-size: 17px; letter-spacing: -.01em; }
+  header nav { margin-left: auto; display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+  header nav a { text-decoration: none; }
+  header nav a:hover { color: var(--ink); }
+  .hero { padding: 56px 0 24px; text-align: center; }
+  .hero h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 18px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p { max-width: 640px; margin: 0 auto 28px; font-size: 19px; color: var(--muted); }
+  .cta { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn { display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; text-decoration: none; font-size: 15px; }
+  .btn.primary { background: var(--accent); color: #140800; }
+  .btn.ghost { border: 1px solid var(--line); color: var(--ink); }
+  .btn:hover { filter: brightness(1.08); }
+  .shot { margin: 40px auto 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,.55); background: var(--bg2); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .caption { text-align: center; color: var(--muted); font-size: 13.5px; margin-top: 12px; }
+  section { padding: 72px 0 0; }
+  h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 8px; }
+  .lead { color: var(--muted); margin: 0 0 28px; max-width: 640px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .card svg { width: 28px; height: 28px; color: var(--accent); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  pre { margin: 0; background: #05051a; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; font: 14px/1.7 var(--mono); overflow-x: auto; position: relative; }
+  pre .c { color: #6f6d8c; }
+  .copy { position: absolute; top: 10px; right: 10px; border: 1px solid var(--line); background: var(--bg2); color: var(--muted); border-radius: 6px; padding: 3px 9px; font: 12px Inter, system-ui, sans-serif; cursor: pointer; }
+  .copy:hover { color: var(--ink); }
+  .steps { display: grid; gap: 14px; }
+  .step { display: grid; grid-template-columns: 36px 1fr; gap: 14px; align-items: start; }
+  .step i { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #140800; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-style: normal; font-size: 14px; margin-top: 2px; }
+  .step h3 { margin: 0 0 6px; font-size: 16px; }
+  .step p { margin: 0 0 10px; color: var(--muted); font-size: 15px; }
+  .faq details { border-top: 1px solid var(--line); padding: 14px 0; }
+  .faq details:last-child { border-bottom: 1px solid var(--line); }
+  .faq summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+  .faq summary::after { content: "+"; color: var(--muted); }
+  .faq details[open] summary::after { content: "–"; }
+  .faq p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+  code { font: 13.5px var(--mono); background: #05051a; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  footer { margin-top: 80px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo.svg" alt=""><b>Glance</b>
+    <nav><a href="#how">How it works</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="https://github.com/adeiji/glance">GitHub</a></nav>
+  </header>
+
+  <div class="hero">
+    <h1>See what Claude is doing<br><em>instead of reading it.</em></h1>
+    <p>Glance is a page beside Claude Code. Every answer that's more than a one-liner lands there as a picture, and a voice talks you through it. Every session you have open, in one place. Free, local, open source.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install in two lines</a>
+      <a class="btn ghost" href="https://github.com/adeiji/glance">View on GitHub</a>
+    </div>
+    <div class="shot"><img src="board.jpg" alt="The Glance page: conversations on the left, visuals in the middle, chat on the right" width="1120" height="760"></div>
+    <div class="caption">Conversations on the left, the board in the middle, chat on the right. Hold Space to talk.</div>
+  </div>
+
+  <section id="how">
+    <h2>What you get</h2>
+    <p class="lead">Claude Code keeps working exactly as it does. Glance adds a second screen that makes the answers easier to take in.</p>
+    <div class="grid">
+      <div class="card"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 14v-3"/><path d="M12 14V8"/><path d="M17 14v-5"/></svg><h3>Pictures, not walls of text</h3><p>Explanations, plans, reviews and status become cards, flows, timelines and charts, drawn with a compact block language plus Mermaid.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5.5a10 10 0 0 1 0 13"/></svg><h3>A voice that walks you through it</h3><p>Each visual comes with a spoken narration, so you can look at the picture instead of reading. Press Escape to stop.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><h3>Every session, one board</h3><p>Run five Claude Code sessions in five terminals and they all show up here. See who's waiting on you, and reply to any of them.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg><h3>Talk instead of type</h3><p>Hold the space bar, say what you want, let go. The answer is spoken back. Chat runs through your own Claude login.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><h3>Your terminal, your way</h3><p>Keep the full Claude Code answer in the terminal and get the board on top, or make the board the answer. Turn it all off with one switch.</p></div>
+      <div class="card"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><h3>Nothing leaves your machine</h3><p>A small Node server with no dependencies, serving a page on localhost. Your sessions, your visuals and your history stay in your home folder.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p class="lead">You need Claude Code and Node, which you already have. Voice uses the built-in macOS speech engine.</p>
+    <div class="steps">
+      <div class="step"><i>1</i><div><h3>Add the plugin, inside Claude Code</h3><pre><button class="copy" data-copy="/plugin marketplace add adeiji/glance
+/plugin install glance@glance">Copy</button>/plugin marketplace add adeiji/glance
+/plugin install glance@glance</pre><p style="margin-top:10px">Or from a shell: <code>claude plugin marketplace add adeiji/glance</code> then <code>claude plugin install glance@glance</code>.</p></div></div>
+      <div class="step"><i>2</i><div><h3>Open the page</h3><pre><button class="copy" data-copy="/glance:open">Copy</button>/glance:open</pre><p style="margin-top:10px">That starts the server and opens <code>http://127.0.0.1:4777</code>. A short tour shows you around.</p></div></div>
+      <div class="step"><i>3</i><div><h3>Ask Claude something</h3><p>Every new session already knows how to draw on the board. Nothing to add to your <code>CLAUDE.md</code>. The first time, Claude asks once for permission to write the board file; allow it always.</p></div></div>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <h2>Questions</h2>
+    <details open><summary>Does it change how Claude Code behaves?</summary><p>Only the shape of the answer. Claude still works in your terminal as before. For anything beyond a quick reply it also writes a visual to the board with a narration. You choose whether the terminal keeps the full answer or just a pointer.</p></details>
+    <details><summary>How do I turn it off?</summary><p>Run <code>/glance:off</code> in any session, or flip the switch at the top of settings. New sessions are then plain Claude Code until you run <code>/glance:on</code>. To remove it: <code>/plugin uninstall glance@glance</code>.</p></details>
+    <details><summary>Does it cost anything or send data anywhere?</summary><p>No. It's free and MIT licensed. The server runs on your machine and talks only to the Claude Code command you already use. The visual block language was designed to be cheap in tokens, about a sixth of a hand-drawn diagram.</p></details>
+    <details><summary>Does it work with Conductor, VS Code, or several terminals?</summary><p>Yes. Glance doesn't care where a session was started. Anything running Claude Code with the plugin enabled appears on the board.</p></details>
+    <details><summary>Linux or Windows?</summary><p>The board, chat and push-to-talk work anywhere Chrome runs. Spoken narration uses the macOS speech engine, so on other systems the board is silent for now.</p></details>
+  </section>
+
+  <footer>
+    <span>Glance · MIT · made by <a href="https://github.com/adeiji">adeiji</a></span>
+    <span><a href="https://github.com/adeiji/glance">GitHub</a> · <a href="https://github.com/adeiji/glance/issues">Issues</a></span>
+  </footer>
+</div>
+<script>
+  for (const b of document.querySelectorAll('.copy')) b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {} };
+</script>
+</body>
+</html>
