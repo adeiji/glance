@@ -43,6 +43,12 @@ The gear at the top right of the page opens settings.
 - **Follow latest**: jump to whichever conversation updates.
 - **Palette** and **appearance** for the page itself; these are per browser.
 
+## Turning it off
+
+Flip **Glance is on** at the top of settings, or run `/glance:off` in any session. New sessions are then plain Claude Code, with nothing added, until you flip it back or run `/glance:on`. A session that's already running keeps going as it was. To remove the plugin entirely, `/plugin uninstall glance@glance`.
+
+The first time the page opens it gives a short tour. You can see it again from settings.
+
 ## What's on the page
 
 - **Left**: your conversations. A dot marks one that has something new; an amber banner says when one is waiting on you.

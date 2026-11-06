@@ -31,9 +31,31 @@ const MODES = new Set(['auto', 'acceptEdits', 'plan', 'bypassPermissions']);
 // Files the pages may load from ~/.claude/board, served under /board/.
 const STATIC = { 'logo.svg': 'image/svg+xml', 'logo.png': 'image/png', 'board.css': 'text/css; charset=utf-8', 'viz.js': 'text/javascript; charset=utf-8', 'mermaid.min.js': 'text/javascript; charset=utf-8', 'fonts/inter.woff2': 'font/woff2', 'fonts/jetbrains-mono.woff2': 'font/woff2', 'marked.min.js': 'text/javascript; charset=utf-8', 'highlight.min.js': 'text/javascript; charset=utf-8' };
 
+// ---------- settings, shared by the page, the server and the session-start hook ----------
+const CONFIG = path.join(DATA, 'config.json');
+const DEFAULTS = { enabled: true, terminalReply: 'full', chime: true, speechRate: 'normal' };
+function settings() {
+  try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CONFIG, 'utf8')) }; } catch { return { ...DEFAULTS }; }
+}
+function saveSettings(patch) {
+  const next = { ...settings() };
+  if (typeof patch.enabled === 'boolean') next.enabled = patch.enabled;
+  if (['full', 'short'].includes(patch.terminalReply)) next.terminalReply = patch.terminalReply;
+  if (typeof patch.chime === 'boolean') next.chime = patch.chime;
+  if (['slower', 'normal', 'faster'].includes(patch.speechRate)) next.speechRate = patch.speechRate;
+  fs.writeFileSync(CONFIG, JSON.stringify(next, null, 2));
+  return next;
+}
+
 fs.mkdirSync(DATA, { recursive: true });
 migrate();
-if (process.argv.includes('--serve')) serve();
+// `--off` makes new Claude Code sessions plain again (the hook stays quiet); `--on` brings Glance back.
+if (process.argv.includes('--off') || process.argv.includes('--on')) {
+  const on = process.argv.includes('--on');
+  saveSettings({ enabled: on });
+  console.log(on ? `Glance is on. New sessions will draw on the board; open it with node ${__filename} --open` : 'Glance is off. New sessions are plain Claude Code until you turn it back on.');
+  if (!on) http.request(`${URL_BASE}/off`, { method: 'POST', timeout: 500 }, res => res.resume()).on('error', () => {}).end();
+} else if (process.argv.includes('--serve')) serve();
 else launch(process.argv.includes('--open'));
 
 // Earlier versions kept the board at ~/.claude/board.html and history next to the code. Move them once,
@@ -85,21 +107,6 @@ async function launch(forceOpen) {
 // ---------- server ----------
 
 function serve() {
-  // ---------- settings, shared by the page, the server and the session-start hook ----------
-  const CONFIG = path.join(DATA, 'config.json');
-  const DEFAULTS = { terminalReply: 'full', chime: true, speechRate: 'normal' };
-  function settings() {
-    try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CONFIG, 'utf8')) }; } catch { return { ...DEFAULTS }; }
-  }
-  function saveSettings(patch) {
-    const next = { ...settings() };
-    if (['full', 'short'].includes(patch.terminalReply)) next.terminalReply = patch.terminalReply;
-    if (typeof patch.chime === 'boolean') next.chime = patch.chime;
-    if (['slower', 'normal', 'faster'].includes(patch.speechRate)) next.speechRate = patch.speechRate;
-    fs.writeFileSync(CONFIG, JSON.stringify(next, null, 2));
-    return next;
-  }
-
   // The page's key to this server. Kept on disk so a restart doesn't strand open tabs.
   const TOKEN_FILE = path.join(DATA, '.token');
   let token = '';
@@ -578,6 +585,7 @@ function serve() {
     const url = new URL(req.url, URL_BASE);
 
     if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
+    if (req.method === 'POST' && url.pathname === '/off') { broadcast({ kind: 'settings', settings: settings() }); return send(res, 200, { ok: true }); }
 
     if (req.method === 'GET' && url.pathname === '/') {
       return send(res, 200, fs.readFileSync(UI, 'utf8').replace('__BOARD_TOKEN__', token), 'text/html; charset=utf-8');

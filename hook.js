@@ -15,7 +15,10 @@ const data = process.env.GLANCE_DATA || path.join(os.homedir(), '.claude', 'glan
 const port = Number(process.env.BOARD_PORT) || 4777;
 // The "Terminal reply" setting from the Glance page: full keeps the normal answer in the terminal, short leaves one line pointing at the board.
 let mode = 'full';
-try { if (JSON.parse(fs.readFileSync(path.join(data, 'config.json'), 'utf8')).terminalReply === 'short') mode = 'short'; } catch {}
+let config = {};
+try { config = JSON.parse(fs.readFileSync(path.join(data, 'config.json'), 'utf8')); } catch {}
+if (config.enabled === false) process.exit(0); // Glance is switched off: the session is plain Claude Code
+if (config.terminalReply === 'short') mode = 'short';
 const replyLine = mode === 'short'
   ? 'Terminal reply: short. Your text reply is just one or two sentences pointing at the board.'
   : 'Terminal reply: full. Give your normal, complete text answer as well; the board visual is in addition to it, not instead of it.';

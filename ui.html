@@ -40,6 +40,29 @@
   #settings .opt.row { align-items: center; justify-content: space-between; }
   #settings .opt.row select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12.5px; color: inherit; }
   #settings .note { font-size: 11.5px; color: var(--muted); padding: 2px 0 0; }
+  #settings .group.master { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  #settings .opt small code { font: 11px var(--mono); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  button.link { border: 0; background: none; color: var(--accent); font-size: 12.5px; cursor: pointer; padding: 4px 0; }
+  button.link:hover { text-decoration: underline; }
+  .chip-off { border: 1px solid var(--edge-amber); background: var(--tint-amber); color: var(--text-amber); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; cursor: pointer; }
+  /* first-visit tour */
+  #tour { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--ink) 35%, transparent); display: flex; align-items: center; justify-content: center; }
+  #tour .card { width: min(440px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 30%, transparent); padding: 22px 24px 18px; }
+  #tour .art { display: flex; align-items: center; justify-content: center; height: 64px; margin-bottom: 8px; }
+  #tour .art svg { width: 48px; height: 48px; color: var(--accent); }
+  #tour .art svg.logo { width: 56px; height: 56px; }
+  #tour h2 { margin: 0 0 8px; font-size: 17px; font-weight: 600; text-align: center; }
+  #tour p { margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; color: var(--muted); text-align: center; }
+  #tour p b { color: var(--ink); font-weight: 600; }
+  #tour kbd { font: 11.5px var(--mono); padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--paper); color: var(--ink); }
+  #tour .foot { display: flex; align-items: center; gap: 8px; }
+  #tour .foot .spacer { flex: 1; }
+  #tour .dots { display: inline-flex; gap: 5px; }
+  #tour .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+  #tour .dots i.on { background: var(--accent); }
+  #tour button.primary { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  #tour button.ghost { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .tour-hi { box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px color-mix(in srgb, var(--accent) 25%, transparent) !important; border-radius: 8px; transition: box-shadow .2s; position: relative; z-index: 61; }
   .pick { display: inline-flex; align-items: center; gap: 2px; color: var(--muted); }
   .pick:hover { color: var(--ink); }
   .pick svg { width: 14px; height: 14px; }
@@ -198,6 +221,7 @@
 <header id="top">
   <h1><svg class="logo" viewBox="0 0 1240 1240" aria-hidden="true"><rect x="40" y="40" width="1160" height="1160" rx="250" fill="#0a0a2a"/><path d="M300 415 L555 620 L300 825" fill="none" stroke="#fbf4e6" stroke-width="100" stroke-linecap="round" stroke-linejoin="round"/><g fill="#f9731f"><rect x="600" y="598" width="180" height="45"/><rect x="735" y="470" width="45" height="320"/><rect x="735" y="470" width="125" height="40"/><rect x="735" y="750" width="125" height="40"/><rect x="860" y="410" width="140" height="145"/><rect x="860" y="690" width="140" height="150"/></g></svg>Glance</h1>
   <span class="spacer"></span>
+  <button id="offChip" class="chip-off" hidden title="New sessions are plain Claude Code. Click to turn Glance back on.">Glance is off</button>
   <span id="conn" title="Connection to the Glance server"><i></i><span>offline</span></span>
   <button id="follow" class="ic" title="Follow the latest: jump to whichever conversation updates"><i data-icon="follow"></i></button>
   <button id="voice" class="ic" title="Read new answers aloud"></button>
@@ -206,6 +230,9 @@
 
 <div id="settings" hidden>
   <div class="panel" role="dialog" aria-label="Settings">
+    <div class="group master">
+      <label class="opt"><input type="checkbox" id="sEnabled"><span><b>Glance is on</b><small>Off makes new Claude Code sessions plain again: nothing on the board, nothing read aloud. Sessions already running carry on as they were. Same as <code>/glance:off</code> and <code>/glance:on</code>.</small></span></label>
+    </div>
     <div class="group">
       <div class="label">Terminal reply</div>
       <label class="opt"><input type="radio" name="terminalReply" value="full"><span><b>Full</b><small>The normal Claude Code answer in the terminal, plus the visual on the board</small></span></label>
@@ -227,6 +254,22 @@
       <label class="opt row"><span><b>Appearance</b></span><select id="scheme" aria-label="Appearance">
         <option value="">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
       </select></label>
+    </div>
+    <div class="group"><button id="tourAgain" class="link">Show the tour again</button></div>
+  </div>
+</div>
+
+<div id="tour" hidden>
+  <div class="card" role="dialog" aria-label="Welcome to Glance">
+    <div class="art" id="tourArt"></div>
+    <h2 id="tourTitle"></h2>
+    <p id="tourText"></p>
+    <div class="foot">
+      <span class="dots" id="tourDots"></span>
+      <span class="spacer"></span>
+      <button id="tourSkip" class="link">Skip</button>
+      <button id="tourBack" class="ghost">Back</button>
+      <button id="tourNext" class="primary">Next</button>
     </div>
   </div>
 </div>
@@ -634,6 +677,9 @@ for (const [id, key] of [['theme', 'board-theme'], ['scheme', 'board-scheme']]) 
 // session; the rest (voice, follow, palette, appearance) are this browser's own.
 let serverSettings = { terminalReply: 'full', chime: true, speechRate: 'normal' };
 function renderSettings() {
+  const on = serverSettings.enabled !== false;
+  $('sEnabled').checked = on;
+  $('offChip').hidden = on;
   for (const r of document.querySelectorAll('input[name="terminalReply"]')) r.checked = r.value === serverSettings.terminalReply;
   $('sChime').checked = !!serverSettings.chime;
   $('sRate').value = serverSettings.speechRate || 'normal';
@@ -646,6 +692,8 @@ async function saveSettings(patch) {
   try { const r = await post('/settings', patch); if (r.ok) serverSettings = r.data; } catch {}
   renderSettings();
 }
+$('sEnabled').onchange = () => saveSettings({ enabled: $('sEnabled').checked });
+$('offChip').onclick = () => saveSettings({ enabled: true });
 for (const r of document.querySelectorAll('input[name="terminalReply"]')) r.onchange = () => saveSettings({ terminalReply: r.value });
 $('sChime').onchange = () => saveSettings({ chime: $('sChime').checked });
 $('sRate').onchange = () => saveSettings({ speechRate: $('sRate').value });
@@ -660,6 +708,42 @@ $('gear').onclick = () => toggleSettings();
 $('settings').addEventListener('click', e => { if (e.target === $('settings')) toggleSettings(false); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('settings').hidden) toggleSettings(false); });
 loadSettings();
+
+// ---------- first-visit tour ----------
+const TOUR = [
+  { art: 'logo', title: 'Welcome to Glance', text: 'Glance sits beside Claude Code. Anything more than a quick answer lands here as a <b>picture</b>, and a voice talks you through it, across every session you have open.' },
+  { art: 'chat', target: '#side', title: 'Every conversation, one place', text: 'The left column lists your Claude Code sessions. A <b>dot</b> means something new. An <b>amber banner</b> means a session is waiting on you.' },
+  { art: 'text', target: '#board', title: 'The board', text: 'Visuals arrive at the <b>bottom</b>, so nothing you are reading moves. <b>Click</b> a visual to jump the chat to the reply that produced it. Hover one for a speaker button, or a text button to read the narration.' },
+  { art: 'mic', target: '#chat', title: 'Reply from here', text: 'Type to any session, or <b>hold the space bar</b> to talk and let go to send. The menu under the box sets what Claude may do without asking.' },
+  { art: 'speaker', target: '#voice', title: 'Listen instead of read', text: 'With the speaker on, each new visual is read aloud. Press <kbd>Esc</kbd> to stop. Chime and speech rate are in settings.' },
+  { art: 'gear', target: '#gear', title: 'Yours to tune', text: '<b>Terminal reply</b> chooses between the full Claude Code answer in the terminal plus the board, or a short pointer. Turn Glance <b>off</b> here, or with <code>/glance:off</code>, whenever you want plain Claude Code back.' },
+];
+let tourStep = 0;
+function tourHighlight(sel) {
+  for (const el of document.querySelectorAll('.tour-hi')) el.classList.remove('tour-hi');
+  if (sel) document.querySelector(sel)?.classList.add('tour-hi');
+}
+function renderTour() {
+  const step = TOUR[tourStep];
+  $('tourArt').innerHTML = step.art === 'logo' ? $('top').querySelector('.logo').outerHTML : icon(step.art);
+  $('tourTitle').textContent = step.title;
+  $('tourText').innerHTML = step.text;
+  $('tourDots').innerHTML = TOUR.map((_, i) => `<i class="${i === tourStep ? 'on' : ''}"></i>`).join('');
+  $('tourBack').hidden = tourStep === 0;
+  $('tourNext').textContent = tourStep === TOUR.length - 1 ? 'Done' : 'Next';
+  $('tourSkip').hidden = tourStep === TOUR.length - 1;
+  tourHighlight(step.target);
+}
+function startTour() { tourStep = 0; $('settings').hidden = true; $('gear').classList.remove('on'); $('tour').hidden = false; renderTour(); }
+function endTour() { $('tour').hidden = true; tourHighlight(null); try { localStorage.setItem('glance-toured', '1'); } catch {} }
+$('tourNext').onclick = () => { if (tourStep >= TOUR.length - 1) return endTour(); tourStep++; renderTour(); };
+$('tourBack').onclick = () => { if (tourStep > 0) { tourStep--; renderTour(); } };
+$('tourSkip').onclick = endTour;
+$('tourAgain').onclick = startTour;
+document.addEventListener('keydown', e => { if (!$('tour').hidden && e.key === 'Escape') endTour(); });
+let toured = false;
+try { toured = localStorage.getItem('glance-toured') === '1'; } catch {}
+if (!toured) setTimeout(startTour, 600);
 
 // ---------- sidebar: every session we know about ----------
 
