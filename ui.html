@@ -46,8 +46,10 @@
   button.link:hover { text-decoration: underline; }
   .chip-off { border: 1px solid var(--edge-amber); background: var(--tint-amber); color: var(--text-amber); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; cursor: pointer; }
   /* first-visit tour */
-  #tour { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--ink) 35%, transparent); display: flex; align-items: center; justify-content: center; }
-  #tour .card { width: min(440px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 30%, transparent); padding: 22px 24px 18px; }
+  /* dim layer, then the highlighted pane (z 61), then the card on top of everything */
+  #tourDim { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+  #tour { position: fixed; inset: 0; z-index: 62; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  #tour .card { pointer-events: auto; width: min(440px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 60px color-mix(in srgb, var(--ink) 30%, transparent); padding: 22px 24px 18px; }
   #tour .art { display: flex; align-items: center; justify-content: center; height: 64px; margin-bottom: 8px; }
   #tour .art svg { width: 48px; height: 48px; color: var(--accent); }
   #tour .art svg.logo { width: 56px; height: 56px; }
@@ -259,6 +261,7 @@
   </div>
 </div>
 
+<div id="tourDim" hidden></div>
 <div id="tour" hidden>
   <div class="card" role="dialog" aria-label="Welcome to Glance">
     <div class="art" id="tourArt"></div>
@@ -734,8 +737,8 @@ function renderTour() {
   $('tourSkip').hidden = tourStep === TOUR.length - 1;
   tourHighlight(step.target);
 }
-function startTour() { tourStep = 0; $('settings').hidden = true; $('gear').classList.remove('on'); $('tour').hidden = false; renderTour(); }
-function endTour() { $('tour').hidden = true; tourHighlight(null); try { localStorage.setItem('glance-toured', '1'); } catch {} }
+function startTour() { tourStep = 0; $('settings').hidden = true; $('gear').classList.remove('on'); $('tourDim').hidden = false; $('tour').hidden = false; renderTour(); }
+function endTour() { $('tour').hidden = true; $('tourDim').hidden = true; tourHighlight(null); try { localStorage.setItem('glance-toured', '1'); } catch {} }
 $('tourNext').onclick = () => { if (tourStep >= TOUR.length - 1) return endTour(); tourStep++; renderTour(); };
 $('tourBack').onclick = () => { if (tourStep > 0) { tourStep--; renderTour(); } };
 $('tourSkip').onclick = endTour;
