@@ -29,7 +29,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROJECTS = path.join(CLAUDE_DIR, 'projects');
 const MODES = new Set(['auto', 'acceptEdits', 'plan', 'bypassPermissions']);
 // Files the pages may load from ~/.claude/board, served under /board/.
-const STATIC = { 'logo.svg': 'image/svg+xml', 'board.css': 'text/css; charset=utf-8', 'viz.js': 'text/javascript; charset=utf-8', 'mermaid.min.js': 'text/javascript; charset=utf-8', 'fonts/inter.woff2': 'font/woff2', 'fonts/jetbrains-mono.woff2': 'font/woff2', 'marked.min.js': 'text/javascript; charset=utf-8', 'highlight.min.js': 'text/javascript; charset=utf-8' };
+const STATIC = { 'logo.svg': 'image/svg+xml', 'logo.png': 'image/png', 'board.css': 'text/css; charset=utf-8', 'viz.js': 'text/javascript; charset=utf-8', 'mermaid.min.js': 'text/javascript; charset=utf-8', 'fonts/inter.woff2': 'font/woff2', 'fonts/jetbrains-mono.woff2': 'font/woff2', 'marked.min.js': 'text/javascript; charset=utf-8', 'highlight.min.js': 'text/javascript; charset=utf-8' };
 
 fs.mkdirSync(DATA, { recursive: true });
 migrate();

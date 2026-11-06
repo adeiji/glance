@@ -1,6 +1,6 @@
 {
   "name": "glance",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "See what Claude is doing instead of reading it: a page beside Claude Code that turns every answer into a picture and reads it aloud, across all your sessions.",
   "author": {
     "name": "adeiji"
