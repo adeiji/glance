@@ -11,14 +11,14 @@ Glance is a page that sits beside Claude Code. Every answer that's more than a o
 Inside Claude Code:
 
 ```
-/plugin marketplace add adeiji/glance
+/plugin marketplace add GetGlance/glance
 /plugin install glance@glance
 ```
 
 Or from a shell:
 
 ```
-claude plugin marketplace add adeiji/glance
+claude plugin marketplace add GetGlance/glance
 claude plugin install glance@glance
 ```
 
