@@ -29,7 +29,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROJECTS = path.join(CLAUDE_DIR, 'projects');
 const MODES = new Set(['auto', 'acceptEdits', 'plan', 'bypassPermissions']);
 // Files the pages may load from ~/.claude/board, served under /board/.
-const STATIC = { 'board.css': 'text/css; charset=utf-8', 'viz.js': 'text/javascript; charset=utf-8', 'mermaid.min.js': 'text/javascript; charset=utf-8', 'fonts/inter.woff2': 'font/woff2', 'fonts/jetbrains-mono.woff2': 'font/woff2', 'marked.min.js': 'text/javascript; charset=utf-8', 'highlight.min.js': 'text/javascript; charset=utf-8' };
+const STATIC = { 'logo.svg': 'image/svg+xml', 'board.css': 'text/css; charset=utf-8', 'viz.js': 'text/javascript; charset=utf-8', 'mermaid.min.js': 'text/javascript; charset=utf-8', 'fonts/inter.woff2': 'font/woff2', 'fonts/jetbrains-mono.woff2': 'font/woff2', 'marked.min.js': 'text/javascript; charset=utf-8', 'highlight.min.js': 'text/javascript; charset=utf-8' };
 
 fs.mkdirSync(DATA, { recursive: true });
 migrate();
@@ -85,6 +85,21 @@ async function launch(forceOpen) {
 // ---------- server ----------
 
 function serve() {
+  // ---------- settings, shared by the page, the server and the session-start hook ----------
+  const CONFIG = path.join(DATA, 'config.json');
+  const DEFAULTS = { terminalReply: 'full', chime: true, speechRate: 'normal' };
+  function settings() {
+    try { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(CONFIG, 'utf8')) }; } catch { return { ...DEFAULTS }; }
+  }
+  function saveSettings(patch) {
+    const next = { ...settings() };
+    if (['full', 'short'].includes(patch.terminalReply)) next.terminalReply = patch.terminalReply;
+    if (typeof patch.chime === 'boolean') next.chime = patch.chime;
+    if (['slower', 'normal', 'faster'].includes(patch.speechRate)) next.speechRate = patch.speechRate;
+    fs.writeFileSync(CONFIG, JSON.stringify(next, null, 2));
+    return next;
+  }
+
   // The page's key to this server. Kept on disk so a restart doesn't strand open tabs.
   const TOKEN_FILE = path.join(DATA, '.token');
   let token = '';
@@ -344,7 +359,8 @@ function serve() {
     if (!speech.length) return;
     const item = speech.shift();
     const start = () => {
-      const p = spawn('say', [], { stdio: ['pipe', 'ignore', 'ignore'] });
+      const rate = { slower: ['-r', '150'], faster: ['-r', '230'] }[settings().speechRate] || [];
+      const p = spawn('say', rate, { stdio: ['pipe', 'ignore', 'ignore'] });
       speaker = p;
       broadcast({ kind: 'speaking', on: true, text: item.show, nudge: item.nudge || null });
       const done = () => {
@@ -357,7 +373,7 @@ function serve() {
       p.on('error', done);
       p.stdin.end(item.say);
     };
-    if (item.chime) {
+    if (item.chime && settings().chime) {
       speaker = true; // hold the queue while the chime plays
       const c = spawn('afplay', [CHIME], { stdio: 'ignore' });
       const go = () => { speaker = null; start(); };
@@ -382,10 +398,7 @@ function serve() {
 
   // ---------- talking to claude ----------
 
-  // The "Terminal reply" plugin setting, written here by hook.js so page-driven sessions follow it too.
-  function replyMode() {
-    try { return JSON.parse(fs.readFileSync(path.join(DATA, 'config.json'), 'utf8')).terminalReply === 'short' ? 'short' : 'full'; } catch { return 'full'; }
-  }
+  function replyMode() { return settings().terminalReply; }
   function rules() {
     const line = replyMode() === 'short'
       ? 'Terminal reply: short. Your text reply is just one or two sentences pointing at the board.'
@@ -672,6 +685,16 @@ function serve() {
       if (muted) hush();
       broadcast({ kind: 'muted', on: muted });
       return send(res, 200, { ok: true });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/settings') return send(res, 200, settings());
+
+    if (req.method === 'POST' && url.pathname === '/settings') {
+      let body;
+      try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad request' }); }
+      const next = saveSettings(body || {});
+      broadcast({ kind: 'settings', settings: next });
+      return send(res, 200, next);
     }
 
     if (req.method === 'POST' && url.pathname === '/hush') {

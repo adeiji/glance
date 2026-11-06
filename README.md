@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.svg" width="72" alt="Glance"></p>
+
 # Glance
 
 **See what Claude is doing instead of reading it.**
@@ -34,10 +36,12 @@ Requirements: Claude Code and Node, which you already have. Voice uses the built
 
 ## Settings
 
-**Terminal reply** decides what you see in the terminal alongside the board. Change it in `/config` (it's listed under the plugin) or with `/plugin configure glance@glance`. It takes effect in the next session.
+The gear at the top right of the page opens settings.
 
-- `full` (default): the normal Claude Code answer in the terminal, plus the visual on the board.
-- `short`: one line in the terminal pointing at the board. The board becomes the answer.
+- **Terminal reply**: `full` (default) keeps the normal Claude Code answer in the terminal and adds the visual on the board; `short` leaves one line in the terminal pointing at the board. Applies to sessions started after the change.
+- **Read aloud**, **chime** before a narration, and **speech rate** (Mac only).
+- **Follow latest**: jump to whichever conversation updates.
+- **Palette** and **appearance** for the page itself; these are per browser.
 
 ## What's on the page
 
