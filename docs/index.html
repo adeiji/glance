@@ -41,6 +41,7 @@
   .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
   .card svg { width: 28px; height: 28px; color: var(--accent); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 12px; }
   .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p b { color: var(--ink); }
   .card p { margin: 0; color: var(--muted); font-size: 15px; }
   pre { margin: 0; background: #05051a; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; font: 14px/1.7 var(--mono); overflow-x: auto; position: relative; }
   pre .c { color: #6f6d8c; }
@@ -67,7 +68,7 @@
 <div class="wrap">
   <header>
     <img src="logo.svg" alt=""><b>Glance</b>
-    <nav><a href="#how">How it works</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="https://github.com/adeiji/glance">GitHub</a></nav>
+    <nav><a href="#how">How it works</a><a href="#install">Install</a><a href="#cost">Tokens</a><a href="#faq">FAQ</a><a href="https://github.com/adeiji/glance">GitHub</a></nav>
   </header>
 
   <div class="hero">
@@ -104,6 +105,17 @@
       <div class="step"><i>2</i><div><h3>Open the page</h3><pre><button class="copy" data-copy="/glance:open">Copy</button>/glance:open</pre><p style="margin-top:10px">That starts the server and opens <code>http://127.0.0.1:4777</code>. A short tour shows you around.</p></div></div>
       <div class="step"><i>3</i><div><h3>Ask Claude something</h3><p>Every new session already knows how to draw on the board. Nothing to add to your <code>CLAUDE.md</code>. The first time, Claude asks once for permission to write the board file; allow it always.</p></div></div>
     </div>
+  </section>
+
+  <section id="cost">
+    <h2>What it costs in tokens</h2>
+    <p class="lead">Glance adds work to each answer, so it adds tokens. Here is the honest shape of it, so you can decide.</p>
+    <div class="grid">
+      <div class="card"><h3>Once per session</h3><p>The rules Glance gives Claude are about <b>1,000 tokens</b> of input, added when a session starts. Claude reads the block-language reference once, another thousand or so. Both are cached after the first use.</p></div>
+      <div class="card"><h3>Per visual</h3><p>Each picture is roughly <b>500 to 900 output tokens</b>, narration included, plus one extra tool call. Quick one-line answers don't get a visual and cost nothing extra.</p></div>
+      <div class="card"><h3>Full vs short</h3><p>In <b>full</b> mode the terminal answer stays, so output for an explanation roughly <b>doubles</b>. In <b>short</b> mode the terminal gets one line, so the total is about <b>20 to 50 percent</b> more than plain Claude Code.</p></div>
+    </div>
+    <p class="lead" style="margin-top:18px">Measured on one typical explain-this question: plain Claude Code used about 620 output tokens. Hand-drawn SVG diagrams would cost around 2,500 tokens each; the block language was designed so a visual costs a fraction of that. If a session can't write the board (a locked-down permission mode, for example), Claude falls back to a text answer. The off switch removes the overhead entirely.</p>
   </section>
 
   <section id="faq" class="faq">
