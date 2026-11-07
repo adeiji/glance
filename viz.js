@@ -132,7 +132,9 @@
       if (pre.tagName !== 'PRE') return pre;
       const div = document.createElement('div');
       div.className = 'mermaid';
-      div.textContent = dedent(pre.textContent).trim();
+      // The source sits inside HTML, so a <br> written in a label has become an element; put it back as text.
+      const text = [...pre.childNodes].map(n => n.nodeType === 1 && n.tagName === 'BR' ? '<br>' : n.textContent).join('');
+      div.textContent = dedent(text).trim();
       pre.replaceWith(div);
       return div;
     });

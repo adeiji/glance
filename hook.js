@@ -25,7 +25,7 @@ const replyLine = mode === 'short'
 let rules = '';
 try { rules = fs.readFileSync(path.join(root, 'BOARD.md'), 'utf8').trim(); } catch {}
 if (rules) {
-  rules += `\n\nOn this machine the board file is ${path.join(data, 'board.html')} and the block syntax is in ${path.join(root, 'VIZ.md')}. The Glance page is at http://127.0.0.1:${port}.\n${replyLine}`;
+  rules += `\n\nOn this machine, section files go in ${path.join(data, 'sections')}/ and the block syntax is in ${path.join(root, 'VIZ.md')}. The Glance page is at http://127.0.0.1:${port}.\n${replyLine}`;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: rules } }));
 }
 

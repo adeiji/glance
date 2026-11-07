@@ -20,6 +20,7 @@ const CLAUDE_DIR = path.join(HOME, '.claude');
 // The plugin's own folder is replaced on every update, so nothing is kept there.
 const DATA = process.env.GLANCE_DATA || path.join(CLAUDE_DIR, 'glance');
 const BOARD = path.join(DATA, 'board.html');
+const SECTIONS = path.join(DATA, 'sections'); // one small file per session; the server folds them into the board
 const UI = path.join(__dirname, 'ui.html');
 const RULES = path.join(__dirname, 'BOARD.md'); // the rules every session gets, so CLAUDE.md needs nothing
 const VIZ = path.join(__dirname, 'VIZ.md');
@@ -48,7 +49,7 @@ function saveSettings(patch) {
   return next;
 }
 
-fs.mkdirSync(DATA, { recursive: true });
+fs.mkdirSync(SECTIONS, { recursive: true });
 migrate();
 // `--off` makes new Claude Code sessions plain again (the hook stays quiet); `--on` brings Glance back.
 if (process.argv.includes('--off') || process.argv.includes('--on')) {
@@ -198,6 +199,46 @@ function serve() {
   }
   archive();
   fs.watchFile(BOARD, { interval: 400 }, () => broadcast({ kind: 'board', changed: archive() }));
+
+  // ---------- per-session section files ----------
+  // A session posts by writing one small file, <sections>/<session id>.html, with the Write tool. The server splices
+  // it into board.html and prunes old sections, so no session ever has to read or edit the big shared file.
+  const seenSections = new Map(); // file name -> mtime already applied
+  try { for (const f of fs.readdirSync(SECTIONS)) seenSections.set(f, fs.statSync(path.join(SECTIONS, f)).mtimeMs); } catch {}
+  function applySections() {
+    let files; try { files = fs.readdirSync(SECTIONS).filter(f => f.endsWith('.html')); } catch { return; }
+    let board; try { board = fs.readFileSync(BOARD, 'utf8'); } catch { return; }
+    let changed = false;
+    for (const f of files) {
+      const file = path.join(SECTIONS, f);
+      let st; try { st = fs.statSync(file); } catch { continue; }
+      if (seenSections.get(f) === st.mtimeMs) continue;
+      seenSections.set(f, st.mtimeMs);
+      const id = f.slice(0, -5).toLowerCase();
+      if (!UUID.test(id)) continue;
+      let html; try { html = fs.readFileSync(file, 'utf8'); } catch { continue; }
+      const m = html.match(/<section\b[^>]*>[\s\S]*<\/section>/);
+      if (!m) continue;
+      // The file name is the authority on whose section this is.
+      const sec = m[0].replace(/^<section\b[^>]*>/, open => {
+        let o = open;
+        o = /\bdata-session="/.test(o) ? o.replace(/\bdata-session="[^"]*"/, `data-session="${id}"`) : o.replace(/^<section/, `<section data-session="${id}"`);
+        o = /\bid="/.test(o) ? o.replace(/\bid="[^"]*"/, `id="session-${id.slice(0, 8)}"`) : o.replace(/^<section/, `<section id="session-${id.slice(0, 8)}"`);
+        if (!/\bdata-updated="/.test(o)) o = o.replace(/^<section/, `<section data-updated="${new Date().toISOString()}"`);
+        return o;
+      });
+      const re = new RegExp(`<section\\b[^>]*\\bdata-session="${id}"[^>]*>[\\s\\S]*?<\\/section>\\s*`, 'i');
+      if (re.test(board)) board = board.replace(re, () => sec + '\n');
+      else if (board.includes('<!-- SECTIONS -->')) board = board.replace('<!-- SECTIONS -->', () => '<!-- SECTIONS -->\n' + sec + '\n');
+      else continue;
+      changed = true;
+    }
+    if (!changed) return;
+    const cutoff = Date.now() - 86400e3;
+    board = board.replace(/<section\b[^>]*\bdata-updated="([^"]*)"[^>]*>[\s\S]*?<\/section>\s*/g, (whole, upd) => { const t = Date.parse(upd); return t && t < cutoff ? '' : whole; });
+    fs.writeFileSync(BOARD, board);
+  }
+  setInterval(applySections, 500);
   // The app reloads itself when its own code or styles change.
   for (const f of ['ui.html', 'board.css', 'viz.js']) fs.watchFile(path.join(__dirname, f), { interval: 1000 }, () => broadcast({ kind: 'reload' }));
 
@@ -411,11 +452,11 @@ function serve() {
     const line = replyMode() === 'short'
       ? 'Terminal reply: short. Your text reply is just one or two sentences pointing at the board.'
       : 'Terminal reply: full. Give your normal, complete text answer as well; the board visual is in addition to it, not instead of it.';
-    try { return `${fs.readFileSync(RULES, 'utf8').trim()}\n\nOn this machine the board file is ${BOARD} and the block syntax is in ${VIZ}. The Glance page is at ${URL_BASE}.\n${line}`; } catch { return ''; }
+    try { return `${fs.readFileSync(RULES, 'utf8').trim()}\n\nOn this machine, section files go in ${SECTIONS}/ and the block syntax is in ${VIZ}. The Glance page is at ${URL_BASE}.\n${line}`; } catch { return ''; }
   }
 
   function sectionLine(sessionId, cwd) {
-    return `Your board section in ${BOARD} is <section id="session-${sessionId.slice(0, 8)}" data-session="${sessionId}" data-cwd="${cwd}" data-updated="<ISO time>">; keep those attributes on it.`;
+    return `To post to the board, write your whole <section id="session-${sessionId.slice(0, 8)}" data-session="${sessionId}" data-cwd="${cwd}" data-updated="<ISO time>">…</section> to the file ${path.join(SECTIONS, sessionId + '.html')} with the Write tool, overwriting it each time. Never edit ${BOARD} yourself.`;
   }
 
   function boardPrompt(sessionId, cwd) {

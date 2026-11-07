@@ -58,11 +58,11 @@ The first time the page opens it gives a short tour. You can see it again from s
 
 ## How it works
 
-The plugin ships a small Node server, `server.js`, with no dependencies. A session-start hook gives every Claude Code session the rules in `BOARD.md`, which tell Claude how to write its section of the shared `board.html`. The server watches that file, archives every version, and renders it with the block language described in `VIZ.md` plus Mermaid. Chat from the page runs through the real `claude` command on your machine, so it uses your normal login and permissions.
+The plugin ships a small Node server, `server.js`, with no dependencies. A session-start hook gives every Claude Code session the rules in `BOARD.md`, which tell Claude to write its section as one small file in `~/.claude/glance/sections/`. The server folds those files into the shared `board.html`, archives every version, and renders it with the block language described in `VIZ.md` plus Mermaid. Chat from the page runs through the real `claude` command on your machine, so it uses your normal login and permissions.
 
 Everything Glance writes lives in `~/.claude/glance`: the board file, per-conversation history, the log and the page token. Nothing leaves your machine.
 
-Claude will ask once for permission to write `~/.claude/glance/board.html` from a session. Allow it always and it won't ask again.
+Claude will ask once for permission to write its section file under `~/.claude/glance/sections/`. Allow it always and it won't ask again.
 
 ## Updating
 

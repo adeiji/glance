@@ -1,6 +1,6 @@
 # Writing a board section
 
-Sections live in the Glance board file (`~/.claude/glance/board.html` unless the rules say otherwise). Each session owns one `<section>`; replace yours, or insert it right after `<!-- SECTIONS -->` the first time. Delete sections whose `data-updated` is older than 24 hours.
+Each session owns one `<section>`, written as a whole to its own file, `<sections folder>/<session id>.html` (the rules give the folder), with the Write tool. Overwrite that file each time; the Glance server folds it into the board and prunes sections older than 24 hours. Never edit the board file itself, and never write the section through a shell command: shells such as fish expand `{…}` and strip quotes, which silently breaks Mermaid nodes like `B{"question?"}`.
 
 ```html
 <section id="session-<first 8 of id>" data-session="<full session id>" data-cwd="<cwd>" data-updated="<ISO time>">
